@@ -1,26 +1,24 @@
 // See https://github.com/typicode/json-server#module
-const fs = require('fs');
-var express = require('express');
+const fs = require("fs");
+var express = require("express");
 const jsonServer = require("json-server");
-var path = require ('path');
+var path = require("path");
 const server = jsonServer.create();
 var bodyParser = require("body-parser");
-var multer = require('multer');
-const { v4: uuidv4 } = require('uuid');
-server.all('*', function (req, res, next) {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Headers', '*');
-    res.header('Access-Control-Allow-Methods', 'PUT,POST,GET,DELETE,OPTIONS');
-    res.header('X-Powered-By', '3.2.1');
-    res.header('Content-Type', 'application/json;charset=utf-8');
-    let headers = req.headers;
-    headers['content-type'] = headers['content-type'] || 'application/json';
-    next();
-  });
-server.use(bodyParser.json()); // 支持 json 格式
-// 使用第三方插件 qs 来处理
-server.use(bodyParser.urlencoded({ extended: true }));
-server.use(bodyParser.text());
+var multer = require("multer");
+const { v4: uuidv4 } = require("uuid");
+server.all("*", function (req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "*");
+  res.header("Access-Control-Allow-Methods", "PUT,POST,GET,DELETE,OPTIONS");
+  res.header("X-Powered-By", "3.2.1");
+  res.header("Content-Type", "application/json;charset=utf-8");
+  let headers = req.headers;
+  headers["content-type"] = headers["content-type"] || "application/json";
+  next();
+});
+server.use(bodyParser.json({ limit: "50mb" }));
+server.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
 server.get("/timeout", function (req, res) {
   setTimeout(function () {
     res.send(data);
@@ -28,16 +26,16 @@ server.get("/timeout", function (req, res) {
 });
 // 配置存储选项
 const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-      console.log('destination')
-        cb(null, 'static/') // 确保这个文件夹已经存在，否则会报错
-    },
-    filename: function (req, file, cb) {
-        console.log('filename')
-        cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname))
-    }
-  });
-const upload = multer({ storage: storage });
+  destination: function (req, file, cb) {
+    console.log("destination");
+    cb(null, "static/"); // 确保这个文件夹已经存在，否则会报错
+  },
+  filename: function (req, file, cb) {
+    console.log("filename");
+    cb(null, file.fieldname + "-" + Date.now() + path.extname(file.originalname));
+  },
+});
+const upload = multer({ storage: storage, limits: { fileSize: 100 * 1024 * 1024 } });
 
 server.get("/list", function (req, res) {
   let query = toJSON(req.query);
@@ -645,79 +643,79 @@ server.get("/getTypeData", function (req, res) {
   }
 });
 // 图片上传路由
-server.post('/upload', upload.single('file'), (req, res) => {
-    let result = {}
-    if (!req.file) {
-        result.code = 300;
-        result.msg = '没有文件被上传!';
-        result.data = ''
-        return res.status(400).send(result);
-    }
+server.post("/upload", upload.single("file"), (req, res) => {
+  let result = {};
+  if (!req.file) {
+    result.code = 300;
+    result.msg = "没有文件被上传!";
+    result.data = "";
+    return res.status(400).send(result);
+  }
 
-    result.code = 200;
-    result.data = req.file;
-    result.data.path = `http://localhost:8580/${req.file.destination}${req.file.filename}`
-    result.msg = '上传成功!';
-    res.send(result);
+  result.code = 200;
+  result.data = req.file;
+  result.data.path = `http://localhost:8580/${req.file.destination}${req.file.filename}`;
+  result.msg = "上传成功!";
+  res.send(result);
 });
 // POST route to upload a base64 file
-server.post('/upload64', (req, res) => {
-    function getExtensionFromBase64(base64) {
-        const matches = base64.match(/^data:([A-Za-z-+\/]+);base64,/);
-        if (!matches) {
-            return null;
-        }
-        const mimeType = matches[1];
-        switch (mimeType) {
-            case 'image/png':
-                return 'png';
-            case 'image/jpeg':
-                return 'jpg';
-            case 'image/gif':
-                return 'gif';
-            // 添加更多的 MIME 类型和对应的文件扩展名
-            default:
-                return null; // 未知或不支持的文件类型
-        }
+server.post("/upload64", (req, res) => {
+  function getExtensionFromBase64(base64) {
+    const matches = base64.match(/^data:([A-Za-z-+\/]+);base64,/);
+    if (!matches) {
+      return null;
     }
-    
-    const { base64 } = req.body;
-    if (!base64) {
-        return res.status(400).send('Invalid request, missing base64 data');
+    const mimeType = matches[1];
+    switch (mimeType) {
+      case "image/png":
+        return "png";
+      case "image/jpeg":
+        return "jpg";
+      case "image/gif":
+        return "gif";
+      // 添加更多的 MIME 类型和对应的文件扩展名
+      default:
+        return null; // 未知或不支持的文件类型
     }
+  }
 
-    // 提取文件扩展名
-    const extension = getExtensionFromBase64(base64);
-    if (!extension) {
-        return res.status(400).send('Unsupported file type');
+  const { base64 } = req.body;
+  if (!base64) {
+    return res.status(400).send("Invalid request, missing base64 data");
+  }
+
+  // 提取文件扩展名
+  const extension = getExtensionFromBase64(base64);
+  if (!extension) {
+    return res.status(400).send("Unsupported file type");
+  }
+
+  // Generate a unique filename with a UUID and the correct extension
+  const filename = `${uuidv4()}.${extension}`;
+
+  // Remove Base64 prefix if present
+  const base64Data = base64.replace(/^data:([A-Za-z-+\/]+);base64,/, "");
+
+  // Convert base64 to buffer
+  const buffer = Buffer.from(base64Data, "base64");
+
+  // Define path to save the file
+  const filePath = path.join(__dirname, "static", filename);
+
+  // Ensure the uploads directory exists
+  fs.mkdirSync(path.join(__dirname, "static"), { recursive: true });
+
+  // Write the file
+  fs.writeFile(filePath, buffer, (err) => {
+    if (err) {
+      return res.status(500).send("Error saving the file");
     }
-
-    // Generate a unique filename with a UUID and the correct extension
-    const filename = `${uuidv4()}.${extension}`;
-
-    // Remove Base64 prefix if present
-    const base64Data = base64.replace(/^data:([A-Za-z-+\/]+);base64,/, '');
-
-    // Convert base64 to buffer
-    const buffer = Buffer.from(base64Data, 'base64');
-
-    // Define path to save the file
-    const filePath = path.join(__dirname, 'static', filename);
-
-    // Ensure the uploads directory exists
-    fs.mkdirSync(path.join(__dirname, 'static'), { recursive: true });
-
-    // Write the file
-    fs.writeFile(filePath, buffer, (err) => {
-        if (err) {
-            return res.status(500).send('Error saving the file');
-        }
-        var result = {data:{}}
-        result.code = 200;
-        result.data.path = `http://localhost:8580/static/${filename}`
-        result.msg = '上传成功!';
-        res.send(result);
-    });
+    var result = { data: {} };
+    result.code = 200;
+    result.data.path = `http://localhost:8580/static/${filename}`;
+    result.msg = "上传成功!";
+    res.send(result);
+  });
 });
 function toJSON(str) {
   try {
